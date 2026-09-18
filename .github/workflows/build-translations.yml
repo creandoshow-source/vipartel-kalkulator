@@ -1,5 +1,9 @@
 name: Build translations
-on:\n  push:\n    paths: ['.github/workflows/build-translations.yml']\n  workflow_dispatch
+on:
+  push:
+    paths:
+      - '.github/workflows/build-translations.yml'
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
