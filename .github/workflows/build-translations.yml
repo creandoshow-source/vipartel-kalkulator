@@ -1,4 +1,4 @@
-name: Build translations v3
+name: Build translations final
 on:
   push:
     paths:
@@ -36,15 +36,17 @@ jobs:
           for lang in ['en','de','fr','ru','uk']:
               tr=GoogleTranslator(source='pl',target=lang)
               m={}
-              for t in texts:
-                  for attempt in range(3):
-                      try:
-                          v=tr.translate(t)
-                          if v: break
-                      except Exception:
-                          v=t
-                          time.sleep(0.4*(attempt+1))
-                  m[t]=v or t
+              for i in range(0,len(texts),8):
+                  batch=texts[i:i+8]
+                  try:
+                      vals=tr.translate_batch(batch)
+                  except Exception:
+                      vals=[]
+                      for t in batch:
+                          try: vals.append(tr.translate(t))
+                          except Exception: vals.append(t)
+                  for a,b in zip(batch,vals): m[a]=b or a
+                  time.sleep(0.2)
               out[lang]=m
           assert all(len(out[k])==len(texts) for k in out)
           open('translations.js','w',encoding='utf8').write('window.VIPARTEL_TRANSLATIONS='+json.dumps(out,ensure_ascii=False,separators=(',',':'))+';')
