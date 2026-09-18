@@ -1,0 +1,1 @@
+window.VIPARTEL_TRANSLATIONS={en:{},de:{},fr:{},ru:{},uk:{}};
