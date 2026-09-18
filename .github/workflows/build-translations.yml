@@ -1,4 +1,4 @@
-name: Build translations
+name: Build translations v2
 on:
   push:
     paths:
