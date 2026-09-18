@@ -1,0 +1,63 @@
+name: Build translations
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install deep-translator
+      - name: Translate catalog
+        run: |
+          cat > /tmp/t.py <<'PY'
+          import re,json,time
+          from deep_translator import GoogleTranslator
+          s=open('services.js',encoding='utf8').read()
+          data=json.loads(s[s.index('=')+1:s.rindex(';')])
+          langs={'en':'en','de':'de','fr':'fr','ru':'ru','uk':'uk'}
+          fields=['name','category','description','meta','unit']
+          out={}
+          texts=[]
+          for x in data:
+            for f in fields:
+              v=x.get(f)
+              if v and v not in texts: texts.append(v)
+          for lang,target in langs.items():
+            tr=GoogleTranslator(source='pl',target=target)
+            m={}
+            for i in range(0,len(texts),40):
+              batch=texts[i:i+40]
+              try:
+                vals=tr.translate_batch(batch)
+              except Exception:
+                vals=[]
+                for t in batch:
+                  try: vals.append(tr.translate(t))
+                  except Exception: vals.append(t)
+                  time.sleep(.15)
+              for a,b in zip(batch,vals): m[a]=b or a
+              time.sleep(.25)
+            out[lang]=m
+          open('translations.js','w',encoding='utf8').write('window.VIPARTEL_TRANSLATIONS='+json.dumps(out,ensure_ascii=False,separators=(',',':'))+';')
+          PY
+          python /tmp/t.py
+      - name: Verify
+        run: |
+          python - <<'PY'
+          import json
+          s=open('translations.js',encoding='utf8').read()
+          d=json.loads(s[s.index('=')+1:s.rindex(';')])
+          assert set(d)=={'en','de','fr','ru','uk'}
+          for k,v in d.items():
+            assert len(v)>127, (k,len(v))
+          print({k:len(v) for k,v in d.items()})
+          PY
+      - run: |
+          git config user.name "VIPARTEL Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add translations.js
+          git commit -m "Complete PL EN DE FR RU UK catalog translations" || exit 0
+          git push
