@@ -1,4 +1,4 @@
-name: Build translations final fast
+name: Build translations verified
 on:
   push:
     paths:
@@ -36,21 +36,22 @@ jobs:
           for lang in ['en','de','fr','ru','uk']:
               tr=GoogleTranslator(source='pl',target=lang)
               m={}
-              batches=[]; batch=[]; size=0
               for t in texts:
-                  if batch and (len(batch)>=8 or size+len(t)>3500):
-                      batches.append(batch); batch=[]; size=0
-                  batch.append(t); size+=len(t)
-              if batch: batches.append(batch)
-              for batch in batches:
-                  try:
-                      vals=tr.translate_batch(batch)
-                  except Exception:
-                      vals=[tr.translate(t) if len(t)<4500 else t for t in batch]
-                  for a,b in zip(batch,vals): m[a]=b or a
-                  time.sleep(0.1)
+                  v=None
+                  for attempt in range(6):
+                      try:
+                          v=tr.translate(t)
+                          break
+                      except Exception:
+                          time.sleep(4+attempt*2)
+                  if not v: raise RuntimeError('Translation failed: '+t[:80])
+                  m[t]=v
+                  time.sleep(0.35)
               out[lang]=m
           assert all(len(out[k])==len(texts) for k in out)
+          for k,m in out.items():
+              unchanged=sum(1 for a,b in m.items() if a==b and len(a)>8)
+              assert unchanged < max(20,len(texts)//8), (k,'too many untranslated',unchanged)
           open('translations.js','w',encoding='utf8').write('window.VIPARTEL_TRANSLATIONS='+json.dumps(out,ensure_ascii=False,separators=(',',':'))+';')
           print('services',len(data),'source strings',len(texts),'languages',len(out))
           PY
