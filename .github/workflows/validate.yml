@@ -1,0 +1,20 @@
+name: Validate JavaScript
+on:
+  push:
+    paths:
+      - 'app.js'
+      - 'core.js'
+      - 'translations.js'
+      - 'services.js'
+      - '.github/workflows/validate.yml'
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check
+        run: |
+          node --check app.js
+          node --check core.js
+          node --check translations.js
+          node --check services.js
